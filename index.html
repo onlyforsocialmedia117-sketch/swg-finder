@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SWG Dimension Finder</title>
+<style>
+:root[data-theme="light"]{--page:#eceaf3;--bg:#fff;--ink:#17112b;--mute:#7d7791;--acc:#7a1fd6;--acc2:#4b13a0;--track:#ece6fb;--line:#d9d3ea;--sheet:#fff;--wind:#cdbcf3;--windline:#7a1fd6}
+:root[data-theme="dark"]{--page:#05040a;--bg:#0a0914;--ink:#f3f0ff;--mute:#9a94b3;--acc:#a15cff;--acc2:#6c2bd9;--track:#241c3d;--line:#2e2548;--sheet:#14102a;--wind:#3a2c63;--windline:#a15cff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--page);font-family:"Segoe UI",system-ui,Arial,sans-serif;color:var(--ink);display:flex;justify-content:center}
+.app{position:relative;width:100%;max-width:430px;min-height:100vh;min-height:100dvh;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+@media(min-width:500px){body{padding:20px 0}.app{min-height:min(860px,calc(100vh - 40px));border-radius:30px;box-shadow:0 12px 50px rgba(40,10,90,.25)}}
+header{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 0}
+header h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.01em}
+.ib{width:38px;height:38px;border-radius:50%;border:0;background:var(--track);color:var(--acc);font-size:17px;cursor:pointer;display:grid;place-items:center}
+.chip{align-self:center;margin-top:16px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mute);font-weight:600}
+.chip i{width:14px;height:14px;border-radius:50%;border:2.5px solid var(--acc);border-right-color:var(--track);display:inline-block}
+.stage{flex:1;display:flex;align-items:center;justify-content:center;padding:6px 6px}
+svg{width:100%;height:auto;max-height:62vh;display:block}
+svg text{font-family:"Segoe UI",system-ui,Arial,sans-serif}
+.cap{font-size:10px;fill:var(--mute);font-weight:600}
+.val{font-size:14px;font-weight:800;fill:var(--ink);font-variant-numeric:tabular-nums}
+.dim{transition:opacity .2s}
+.bar{display:flex;justify-content:space-around;padding:10px 12px 26px}
+.fb{display:flex;flex-direction:column;align-items:center;gap:8px;background:none;border:0;color:var(--mute);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.fb span{width:66px;height:66px;border-radius:50%;background:var(--track);color:var(--acc);display:grid;place-items:center;font-size:17px;font-weight:800;transition:transform .12s}
+.fb:active span{transform:scale(.93)}
+.fb.on span{background:var(--acc);color:#fff}
+.veil{position:absolute;inset:0;background:rgba(10,5,25,.5);opacity:0;pointer-events:none;transition:opacity .2s;z-index:5}
+.veil.show{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--sheet);border-radius:26px 26px 0 0;padding:10px 18px 28px;transform:translateY(105%);transition:transform .25s ease;z-index:6;max-height:70%;overflow:auto}
+.sheet.show{transform:none}
+.grab{width:42px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px}
+.sheet h3{margin:0 0 12px;font-size:15px}
+.opts{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.opts button{padding:11px 4px;border-radius:12px;border:1px solid var(--line);background:none;color:var(--ink);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+.opts button.sel{background:var(--acc);border-color:var(--acc);color:#fff}
+.opts.two{grid-template-columns:1fr 1fr}
+.set{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;font-size:14px}
+.set input{width:84px;padding:8px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:15px;text-align:right}
+</style></head><body>
+<div class="app">
+ <header>
+  <button class="ib" id="gear" aria-label="Ring clearance settings">⚙</button>
+  <h1>SWG Dimension Finder</h1>
+  <button class="ib" id="theme" aria-label="Toggle theme">☾</button>
+ </header>
+ <div class="chip"><i></i><span id="chipTxt"></span></div>
+ <div class="stage"><svg id="dwg" viewBox="0 0 400 300" role="img" aria-label="Gasket drawing with dimensions"></svg></div>
+ <div class="bar">
+  <button class="fb" data-k="size"><span id="b-size"></span>Size</button>
+  <button class="fb" data-k="series"><span id="b-series"></span>Series</button>
+  <button class="fb" data-k="rating"><span id="b-rating"></span>Rating</button>
+  <button class="fb" data-k="part"><span id="b-part"></span>Part</button>
+ </div>
+ <div class="veil" id="veil"></div>
+ <div class="sheet" id="sheet"><div class="grab"></div><h3 id="sTitle"></h3><div id="sBody"></div></div>
+</div>
+<script>
+const D=[["1", "Std", "150", 66.8, 47.8, 31.8, 26.9], ["1", "Std", "300", 73.2, 47.8, 31.8, 26.9], ["1", "Std", "400", 73.2, 47.8, 31.8, 26.9], ["1", "Std", "600", 73.2, 47.8, 31.8, 26.9], ["1", "Std", "900", 79.5, 47.8, 31.8, 26.9], ["1", "Std", "1500", 79.5, 47.8, 31.8, 26.9], ["1", "Std", "2500", 85.9, 47.8, 31.8, 26.9], ["2", "Std", "150", 104.9, 85.9, 69.9, 55.6], ["2", "Std", "300", 111.3, 85.9, 69.9, 55.6], ["2", "Std", "400", 111.3, 85.9, 69.9, 55.6], ["2", "Std", "600", 111.3, 85.9, 69.9, 55.6], ["2", "Std", "900", 143, 85.9, 58.7, 52.3], ["2", "Std", "1500", 143, 85.9, 58.7, 52.3], ["2", "Std", "2500", 146.1, 85.9, 58.7, 52.3], ["3", "Std", "150", 136.7, 120.7, 101.6, 81], ["3", "Std", "300", 149.4, 120.7, 101.6, 81], ["3", "Std", "400", 149.4, 120.7, 101.6, 81], ["3", "Std", "600", 149.4, 120.7, 101.6, 81], ["3", "Std", "900", 168.4, 120.7, 95.3, 78.7], ["3", "Std", "1500", 174.8, 120.7, 92.2, 78.7], ["3", "Std", "2500", 196.9, 120.7, 92.2, 78.7], ["4", "Std", "150", 174.8, 149.4, 127, 106.4], ["4", "Std", "300", 181.1, 149.4, 127, 106.4], ["4", "Std", "400", 177.8, 149.4, 120.7, 102.6], ["4", "Std", "600", 193.8, 149.4, 120.7, 102.6], ["4", "Std", "900", 206.5, 149.4, 120.7, 102.6], ["4", "Std", "1500", 209.6, 149.4, 117.6, 97.8], ["4", "Std", "2500", 235, 149.4, 117.6, 97.8], ["5", "Std", "150", 196.9, 177.8, 155.7, 131.8], ["5", "Std", "300", 215.9, 177.8, 155.7, 131.8], ["5", "Std", "400", 212.9, 177.8, 147.6, 128.3], ["5", "Std", "600", 241.3, 177.8, 147.6, 128.3], ["5", "Std", "900", 247.7, 177.8, 147.6, 128.3], ["5", "Std", "1500", 254, 177.8, 143, 124.5], ["5", "Std", "2500", 279.4, 177.8, 143, 124.5], ["6", "Std", "150", 222.3, 209.6, 182.6, 157.2], ["6", "Std", "300", 251, 209.6, 182.6, 157.2], ["6", "Std", "400", 247.7, 209.6, 174.8, 154.9], ["6", "Std", "600", 266.7, 209.6, 174.8, 154.9], ["6", "Std", "900", 289.1, 209.6, 174.8, 154.9], ["6", "Std", "1500", 282.7, 209.6, 171.5, 147.3], ["6", "Std", "2500", 317.5, 209.6, 171.5, 147.3], ["8", "Std", "150", 279.4, 263.7, 233.4, 215.9], ["8", "Std", "300", 308.1, 263.7, 233.4, 215.9], ["8", "Std", "400", 304.8, 263.7, 225.6, 205.7], ["8", "Std", "600", 320.8, 263.7, 225.6, 205.7], ["8", "Std", "900", 358.9, 257.3, 222.3, 196.9], ["8", "Std", "1500", 352.6, 257.3, 215.9, 196.9], ["8", "Std", "2500", 387.4, 257.3, 215.9, 196.9], ["10", "Std", "150", 339.9, 317.5, 287.3, 268.2], ["10", "Std", "300", 362, 317.5, 287.3, 268.2], ["10", "Std", "400", 358.9, 317.5, 274.6, 255.3], ["10", "Std", "600", 400.1, 317.5, 274.6, 255.3], ["10", "Std", "900", 435.1, 311.2, 276.4, 246.1], ["10", "Std", "1500", 435.1, 311.2, 266.7, 246.1], ["10", "Std", "2500", 476.3, 311.2, 270, 246.1], ["12", "Std", "150", 409.7, 374.7, 339.9, 317.5], ["12", "Std", "300", 422.4, 374.7, 339.9, 317.5], ["12", "Std", "400", 419.1, 374.7, 327.2, 307.3], ["12", "Std", "600", 457.2, 374.7, 327.2, 307.3], ["12", "Std", "900", 498.6, 368.3, 323.9, 292.1], ["12", "Std", "1500", 520.7, 368.3, 323.9, 292.1], ["12", "Std", "2500", 549.4, 368.3, 317.5, 292.1], ["14", "Std", "150", 450.9, 406.4, 371.6, 349.3], ["14", "Std", "300", 485.9, 406.4, 371.6, 349.3], ["14", "Std", "400", 482.6, 406.4, 362, 342.9], ["14", "Std", "600", 492.3, 406.4, 362, 342.9], ["14", "Std", "900", 520.7, 400.1, 355.6, 320.8], ["14", "Std", "1500", 577.9, 400.1, 362, 320.8], ["16", "Std", "150", 514.4, 463.6, 422.4, 400.1], ["16", "Std", "300", 539.8, 463.6, 422.4, 400.1], ["16", "Std", "400", 536.7, 463.6, 412.8, 389.9], ["16", "Std", "600", 565.2, 463.6, 412.8, 389.9], ["16", "Std", "900", 574.8, 457.2, 412.8, 374.7], ["16", "Std", "1500", 641.4, 457.2, 406.4, 368.3], ["18", "Std", "150", 549.4, 527.1, 474.7, 449.3], ["18", "Std", "300", 596.9, 527.1, 474.7, 449.3], ["18", "Std", "400", 593.9, 527.1, 469.9, 438.2], ["18", "Std", "600", 612.9, 527.1, 469.9, 438.2], ["18", "Std", "900", 638.3, 520.7, 463.6, 425.5], ["18", "Std", "1500", 704.9, 520.7, 463.6, 425.5], ["20", "Std", "150", 606.6, 577.9, 525.5, 500.1], ["20", "Std", "300", 654.1, 577.9, 525.5, 500.1], ["20", "Std", "400", 647.7, 577.9, 520.7, 489], ["20", "Std", "600", 682.8, 577.9, 520.7, 489], ["20", "Std", "900", 698.5, 571.5, 520.7, 482.6], ["20", "Std", "1500", 755.7, 571.5, 514.4, 476.3], ["22", "Std", "150", 660.4, 625.5, 593.8, 568.4], ["22", "Std", "300", 704.9, 625.5, 577.9, 552.5], ["22", "Std", "400", 701.8, 625.5, 577.9, 546.2], ["22", "Std", "600", 733.6, 625.5, 577.9, 546.2], ["24", "Std", "150", 717.6, 685.8, 628.7, 603.3], ["24", "Std", "300", 774.7, 685.8, 628.7, 603.3], ["24", "Std", "400", 768.4, 685.8, 628.7, 590.6], ["24", "Std", "600", 790.7, 685.8, 628.7, 590.6], ["24", "Std", "900", 838.2, 679.5, 628.7, 590.6], ["24", "Std", "1500", 901.7, 679.5, 616, 577.9], ["26", "A", "150", 774.7, 704.9, 673.1, 654.1], ["26", "A", "300", 835.2, 736.6, 685.8, 654.1], ["26", "A", "400", 831.9, 736.6, 685.8, 660.4], ["26", "A", "600", 866.9, 736.6, 685.8, 647.7], ["26", "A", "900", 882.7, 736.6, 685.8, 660.4], ["28", "A", "150", 831.9, 755.7, 723.9, 704.9], ["28", "A", "300", 898.7, 787.4, 736.6, 704.9], ["28", "A", "400", 892.3, 787.4, 736.6, 711.2], ["28", "A", "600", 914.4, 787.4, 736.6, 698.5], ["28", "A", "900", 946.2, 787.4, 736.6, 711.2], ["30", "A", "150", 882.7, 806.5, 774.7, 755.7], ["30", "A", "300", 952.5, 844.6, 793.8, 755.7], ["30", "A", "400", 946.2, 844.6, 793.8, 755.7], ["30", "A", "600", 971.6, 844.6, 793.8, 755.7], ["30", "A", "900", 1009.7, 844.6, 793.8, 768.4], ["32", "A", "150", 939.8, 860.6, 825.5, 806.5], ["32", "A", "300", 1006.6, 901.7, 850.9, 806.5], ["32", "A", "400", 1003.3, 901.7, 850.9, 812.8], ["32", "A", "600", 1022.4, 901.7, 850.9, 812.8], ["32", "A", "900", 1073.2, 901.7, 850.9, 812.8], ["34", "A", "150", 990.6, 911.4, 876.3, 857.3], ["34", "A", "300", 1057.4, 952.5, 901.7, 857.3], ["34", "A", "400", 1054.1, 952.5, 901.7, 863.6], ["34", "A", "600", 1073.2, 952.5, 901.7, 863.6], ["34", "A", "900", 1136.7, 952.5, 901.7, 863.6], ["36", "A", "150", 1047.8, 968.5, 927.1, 908.1], ["36", "A", "300", 1117.6, 1006.6, 955.8, 908.1], ["36", "A", "400", 1117.6, 1006.6, 955.8, 917.7], ["36", "A", "600", 1130.3, 1006.6, 955.8, 917.7], ["36", "A", "900", 1200.2, 1009.7, 958.9, 920.8], ["38", "A", "150", 1111.3, 1019.3, 977.9, 958.9], ["38", "A", "300", 1054.1, 1016, 977.9, 952.5], ["38", "A", "400", 1073.2, 1022.4, 971.6, 952.5], ["38", "A", "600", 1104.9, 1041.4, 990.6, 952.5], ["38", "A", "900", 1200.2, 1085.9, 1035.1, 1009.7], ["40", "A", "150", 1162.1, 1070.1, 1028.7, 1009.7], ["40", "A", "300", 1114.6, 1070.1, 1022.4, 1003.3], ["40", "A", "400", 1127.3, 1076.5, 1025.7, 1000.3], ["40", "A", "600", 1155.7, 1098.6, 1047.8, 1009.7], ["40", "A", "900", 1251, 1149.4, 1098.6, 1060.5], ["42", "A", "150", 1219.2, 1124, 1079.5, 1060.5], ["42", "A", "300", 1165.4, 1120.9, 1073.2, 1054.1], ["42", "A", "400", 1178.1, 1127.3, 1076.5, 1051.1], ["42", "A", "600", 1219.2, 1155.7, 1104.9, 1066.8], ["42", "A", "900", 1301.8, 1200.2, 1149.4, 1111.3], ["44", "A", "150", 1276.4, 1178.1, 1130.3, 1111.3], ["44", "A", "300", 1219.2, 1181.1, 1130.3, 1104.9], ["44", "A", "400", 1231.9, 1181.1, 1130.3, 1104.9], ["44", "A", "600", 1270, 1212.9, 1162.1, 1111.3], ["44", "A", "900", 1368.6, 1257.3, 1206.5, 1155.7], ["46", "A", "150", 1327.2, 1228.9, 1181.1, 1162.1], ["46", "A", "300", 1273.3, 1228.9, 1178.1, 1152.7], ["46", "A", "400", 1289.1, 1244.6, 1193.8, 1168.4], ["46", "A", "600", 1327.2, 1263.7, 1212.9, 1162.1], ["46", "A", "900", 1435.1, 1320.8, 1270, 1219.2], ["48", "A", "150", 1384.3, 1279.7, 1231.9, 1212.9], ["48", "A", "300", 1324.1, 1286, 1235.2, 1209.8], ["48", "A", "400", 1346.2, 1295.4, 1244.6, 1206.5], ["48", "A", "600", 1390.7, 1320.8, 1270, 1219.2], ["48", "A", "900", 1485.9, 1371.6, 1320.8, 1270], ["50", "A", "150", 1435.1, 1333.5, 1282.7, 1263.7], ["50", "A", "300", 1378, 1346.2, 1295.4, 1244.6], ["50", "A", "400", 1403.4, 1346.2, 1295.4, 1257.3], ["50", "A", "600", 1447.8, 1371.6, 1320.8, 1270], ["52", "A", "150", 1492.3, 1384.3, 1333.5, 1314.5], ["52", "A", "300", 1428.8, 1397, 1346.2, 1320.8], ["52", "A", "400", 1454.2, 1397, 1346.2, 1308.1], ["52", "A", "600", 1498.6, 1422.4, 1371.6, 1320.8], ["54", "A", "150", 1549.4, 1435.1, 1384.3, 1358.9], ["54", "A", "300", 1492.3, 1454.2, 1403.4, 1352.6], ["54", "A", "400", 1517.7, 1454.2, 1403.4, 1352.6], ["54", "A", "600", 1555.8, 1479.6, 1428.8, 1378], ["56", "A", "150", 1606.6, 1485.9, 1435.1, 1409.7], ["56", "A", "300", 1543.1, 1505, 1454.2, 1403.4], ["56", "A", "400", 1568.5, 1505, 1454.2, 1403.4], ["56", "A", "600", 1612.9, 1530.4, 1479.6, 1428.8], ["58", "A", "150", 1663.7, 1536.7, 1485.9, 1460.5], ["58", "A", "300", 1593.9, 1562.1, 1511.3, 1447.8], ["58", "A", "400", 1619.3, 1555.8, 1505, 1454.2], ["58", "A", "600", 1663.7, 1587.5, 1536.7, 1473.2], ["60", "A", "150", 1714.5, 1587.5, 1536.7, 1511.3], ["60", "A", "300", 1644.7, 1612.9, 1562.1, 1524], ["60", "A", "400", 1682.8, 1619.3, 1568.5, 1517.7], ["60", "A", "600", 1733.6, 1644.7, 1593.9, 1530.4], ["1/2", "Std", "150", 47.8, 31.8, 19.1, 14.2], ["1/2", "Std", "300", 54.1, 31.8, 19.1, 14.2], ["1/2", "Std", "400", 54.1, 31.8, 19.1, 14.2], ["1/2", "Std", "600", 54.1, 31.8, 19.1, 14.2], ["1/2", "Std", "900", 63.5, 31.8, 19.1, 14.2], ["1/2", "Std", "1500", 63.5, 31.8, 19.1, 14.2], ["1/2", "Std", "2500", 69.9, 31.8, 19.1, 14.2], ["3/4", "Std", "150", 57.2, 39.6, 25.4, 20.6], ["3/4", "Std", "300", 66.8, 39.6, 25.4, 20.6], ["3/4", "Std", "400", 66.8, 39.6, 25.4, 20.6], ["3/4", "Std", "600", 66.8, 39.6, 25.4, 20.6], ["3/4", "Std", "900", 69.9, 39.6, 25.4, 20.6], ["3/4", "Std", "1500", 69.9, 39.6, 25.4, 20.6], ["3/4", "Std", "2500", 76.2, 39.6, 25.4, 20.6], ["1 1/4", "Std", "150", 76.2, 60.5, 47.8, 38.1], ["1 1/4", "Std", "300", 82.6, 60.5, 47.8, 38.1], ["1 1/4", "Std", "400", 82.6, 60.5, 47.8, 38.1], ["1 1/4", "Std", "600", 82.6, 60.5, 47.8, 38.1], ["1 1/4", "Std", "900", 88.9, 60.5, 39.6, 33.3], ["1 1/4", "Std", "1500", 88.9, 60.5, 39.6, 33.3], ["1 1/4", "Std", "2500", 104.9, 60.5, 39.6, 33.3], ["1 1/2", "Std", "150", 85.9, 69.9, 54.1, 44.5], ["1 1/2", "Std", "300", 95.3, 69.9, 54.1, 44.5], ["1 1/2", "Std", "400", 95.3, 69.9, 54.1, 44.5], ["1 1/2", "Std", "600", 95.3, 69.9, 54.1, 44.5], ["1 1/2", "Std", "900", 98.6, 69.9, 47.8, 41.4], ["1 1/2", "Std", "1500", 98.6, 69.9, 47.8, 41.4], ["1 1/2", "Std", "2500", 117.6, 69.9, 47.8, 41.4], ["2 1/2", "Std", "150", 124, 98.6, 82.6, 66.5], ["2 1/2", "Std", "300", 130.3, 98.6, 82.6, 66.5], ["2 1/2", "Std", "400", 130.3, 98.6, 82.6, 66.5], ["2 1/2", "Std", "600", 130.3, 98.6, 82.6, 66.5], ["2 1/2", "Std", "900", 165.1, 98.6, 69.9, 63.5], ["2 1/2", "Std", "1500", 165.1, 98.6, 69.9, 63.5], ["2 1/2", "Std", "2500", 168.4, 98.6, 69.9, 63.5], ["3 1/2", "Std", "150", 161.9, 133.4, 114.3, 101.1], ["3 1/2", "Std", "300", 165.1, 133.4, 114.3, 101.1], ["3 1/2", "Std", "400", 161.9, 133.4, 104.8, 91.4], ["3 1/2", "Std", "600", 161.9, 133.4, 104.8, 91.4], ["26", "B", "150", 725.4, 698.5, 673.1, 654.1], ["26", "B", "300", 771.7, 711.2, 673.1, 654.1], ["26", "B", "400", 746.3, 698.5, 666.8, 654.1], ["26", "B", "600", 765.3, 714.5, 663.7, 644.7], ["26", "B", "900", 838.2, 749.3, 692.2, 666.8], ["28", "B", "150", 776.2, 749.3, 723.9, 704.9], ["28", "B", "300", 825.5, 762, 723.9, 704.9], ["28", "B", "400", 800.1, 749.3, 714.5, 701.8], ["28", "B", "600", 819.2, 755.7, 704.9, 685.8], ["28", "B", "900", 901.7, 800.1, 743, 717.6], ["30", "B", "150", 827, 800.1, 774.7, 755.7], ["30", "B", "300", 886, 812.8, 774.7, 755.7], ["30", "B", "400", 857.3, 806.5, 765.3, 752.6], ["30", "B", "600", 879.6, 828.8, 778, 752.6], ["30", "B", "900", 958.9, 857.3, 806.5, 781.1], ["32", "B", "150", 881.1, 850.9, 825.5, 806.5], ["32", "B", "300", 939.8, 863.6, 825.5, 806.5], ["32", "B", "400", 911.4, 860.6, 812.8, 800.1], ["32", "B", "600", 933.5, 882.7, 831.9, 793.8], ["32", "B", "900", 1016, 914.4, 863.6, 838.2], ["34", "B", "150", 935, 908.1, 876.3, 857.3], ["34", "B", "300", 993.9, 914.4, 876.3, 857.3], ["34", "B", "400", 962.2, 911.4, 866.9, 850.9], ["34", "B", "600", 997, 939.8, 889, 850.9], ["34", "B", "900", 1073.2, 971.6, 920.8, 895.4], ["36", "B", "150", 987.6, 958.9, 927.1, 908.1], ["36", "B", "300", 1047.8, 965.2, 927.1, 908.1], ["36", "B", "400", 1022.4, 965.2, 917.7, 898.7], ["36", "B", "600", 1047.8, 990.6, 939.8, 901.7], ["36", "B", "900", 1124, 997, 946.2, 920.8], ["38", "B", "150", 1044.7, 1009.7, 974.9, 958.9], ["38", "B", "300", 1098.6, 1047.8, 1009.7, 971.6], ["38", "B", "400", 1073.2, 1022.4, 971.6, 952.5], ["38", "B", "600", 1104.9, 1041.4, 990.6, 952.5], ["38", "B", "900", 1200.2, 1085.9, 1035.1, 1009.7], ["40", "B", "150", 1095.5, 1063.8, 1022.4, 1009.7], ["40", "B", "300", 1149.4, 1098.6, 1060.5, 1022.4], ["40", "B", "400", 1127.3, 1076.5, 1025.7, 1000.3], ["40", "B", "600", 1155.7, 1098.6, 1047.8, 1009.7], ["40", "B", "900", 1251, 1149.4, 1098.6, 1060.5], ["42", "B", "150", 1146.3, 1114.6, 1079.5, 1060.5], ["42", "B", "300", 1200.2, 1149.4, 1111.3, 1085.9], ["42", "B", "400", 1178.1, 1127.3, 1076.5, 1051.1], ["42", "B", "600", 1219.2, 1155.7, 1104.9, 1066.8], ["42", "B", "900", 1301.8, 1200.2, 1149.4, 1111.3], ["44", "B", "150", 1197.1, 1165.4, 1124, 1111.3], ["44", "B", "300", 1251, 1200.2, 1162.1, 1124], ["44", "B", "400", 1231.9, 1181.1, 1130.3, 1104.9], ["44", "B", "600", 1270, 1212.9, 1162.1, 1111.3], ["44", "B", "900", 1368.6, 1257.3, 1206.5, 1155.7], ["46", "B", "150", 1255.8, 1224, 1181.1, 1162.1], ["46", "B", "300", 1317.8, 1254.3, 1216.2, 1178.1], ["46", "B", "400", 1289.1, 1244.6, 1193.8, 1168.4], ["46", "B", "600", 1327.2, 1263.7, 1212.9, 1162.1], ["46", "B", "900", 1435.1, 1320.8, 1270, 1219.2], ["48", "B", "150", 1306.6, 1270, 1231.9, 1212.9], ["48", "B", "300", 1368.6, 1311.4, 1263.7, 1231.9], ["48", "B", "400", 1346.2, 1295.4, 1244.6, 1206.5], ["48", "B", "600", 1390.7, 1320.8, 1270, 1219.2], ["48", "B", "900", 1485.9, 1371.6, 1320.8, 1270], ["50", "B", "150", 1357.4, 1325.6, 1282.7, 1263.7], ["50", "B", "300", 1419.4, 1355.9, 1317.8, 1267], ["50", "B", "400", 1403.4, 1346.2, 1295.4, 1257.3], ["50", "B", "600", 1447.8, 1371.6, 1320.8, 1270], ["52", "B", "150", 1408.2, 1376.4, 1333.5, 1314.5], ["52", "B", "300", 1470.2, 1406.7, 1368.6, 1317.8], ["52", "B", "400", 1454.2, 1397, 1346.2, 1308.1], ["52", "B", "600", 1498.6, 1422.4, 1371.6, 1320.8], ["54", "B", "150", 1463.8, 1422.4, 1384.3, 1365.3], ["54", "B", "300", 1530.4, 1454.2, 1403.4, 1365.3], ["54", "B", "400", 1517.7, 1454.2, 1403.4, 1352.6], ["54", "B", "600", 1555.8, 1479.6, 1428.8, 1378], ["56", "B", "150", 1514.6, 1478, 1444.8, 1422.4], ["56", "B", "300", 1593.9, 1524, 1479.6, 1428.8], ["56", "B", "400", 1568.5, 1505, 1454.2, 1403.4], ["56", "B", "600", 1612.9, 1530.4, 1479.6, 1428.8], ["58", "B", "150", 1579.6, 1528.8, 1500.1, 1478], ["58", "B", "300", 1655.8, 1573.3, 1535.2, 1484.4], ["58", "B", "400", 1619.3, 1555.8, 1505, 1454.2], ["58", "B", "600", 1663.7, 1587.5, 1536.7, 1473.2], ["60", "B", "150", 1630.4, 1586, 1557.3, 1535.2], ["60", "B", "300", 1706.6, 1630.4, 1589, 1557.3], ["60", "B", "400", 1682.8, 1619.3, 1568.5, 1517.7], ["60", "B", "600", 1733.6, 1644.7, 1593.9, 1530.4]]; // [size, series, class, OROD, GOD, GID, IRID] mm
+const $=id=>document.getElementById(id);
+const num=s=>s.split(' ').reduce((t,x)=>t+(x.includes('/')?x.split('/')[0]/x.split('/')[1]:+x),0);
+const uniq=a=>[...new Set(a)];
+const f=v=>(Math.round(v*10)/10).toFixed(1);
+const S={size:'2',series:'Std',rating:'150',part:'all'};
+const C={ir:2.5,or:3}; // inner ring OD = GID + ir ; outer ring ID = GOD - or
+const PARTS=[['all','All'],['winding','Winding'],['inner','Inner ring'],['outer','Outer ring']];
+const PSHORT={all:'All',winding:'Wind.',inner:'Inner',outer:'Outer'};
+
+function opts(k){
+  if(k==='size')return uniq(D.map(r=>r[0])).sort((a,b)=>num(a)-num(b)).map(v=>[v,v+'"']);
+  if(k==='series')return uniq(D.filter(r=>r[0]===S.size).map(r=>r[1])).map(v=>[v,v==='Std'?'Std':'Series '+v]);
+  if(k==='rating')return uniq(D.filter(r=>r[0]===S.size&&r[1]===S.series).map(r=>r[2])).sort((a,b)=>a-b).map(v=>[v,v]);
+  return PARTS;
+}
+function fix(){
+  const s=opts('series').map(o=>o[0]); if(!s.includes(S.series))S.series=s[0];
+  const c=opts('rating').map(o=>o[0]); if(!c.includes(S.rating))S.rating=c[0];
+}
+const sv=document.documentElement;
+function band(r1,r2,col,op){const w=Math.max(r2-r1,1.6);return `<circle cx="200" cy="150" r="${(r1+(r1+w))/2}" fill="none" stroke="${col}" stroke-width="${w}" opacity="${op}"/>`}
+function render(){
+  fix();
+  const r=D.find(x=>x[0]===S.size&&x[1]===S.series&&x[2]===S.rating);
+  const [,,,OROD,GOD,GID,IRID]=r, irOD=GID+C.ir, orID=GOD-C.or;
+  $('b-size').textContent=S.size+'"'; $('b-size').style.fontSize=S.size.length>3?'13px':'17px';
+  $('b-series').textContent=S.series; $('b-rating').textContent=S.rating; $('b-part').textContent=PSHORT[S.part]; $('b-part').style.fontSize='14px';
+  $('chipTxt').textContent=`${S.size}" · ${S.series==='Std'?'Standard':'Series '+S.series} · Class ${S.rating}`;
+  const rMin=48,rMax=101,k=(rMax-rMin)/(OROD-IRID),R=d=>rMin+(d-IRID)*k;
+  const on=p=>S.part==='all'||S.part===p, op=p=>on(p)?1:.18;
+  let g='';
+  g+=`<circle cx="200" cy="150" r="${rMax+6}" fill="none" stroke="var(--track)" stroke-width="1.5"/>`;
+  g+=band(R(GID),R(GOD),'var(--wind)',op('winding'));
+  g+=`<circle cx="200" cy="150" r="${(R(GID)+R(GOD))/2}" fill="none" stroke="var(--windline)" stroke-width="${Math.max(R(GOD)-R(GID)-1.5,1)}" stroke-dasharray="1.2 2.6" opacity="${op('winding')*.75}"/>`;
+  g+=band(R(IRID),R(irOD),'var(--acc2)',op('inner'));
+  g+=band(R(orID),R(OROD),'var(--acc)',op('outer'));
+  // centre text
+  g+=`<text x="200" y="${150}" text-anchor="middle" font-size="${S.size.length>3?18:24}" font-weight="800" fill="var(--ink)">${S.size}"</text>`;
+  g+=`<text x="200" y="168" text-anchor="middle" font-size="10" font-weight="600" fill="var(--mute)">Class ${S.rating}</text>`;
+  // callouts: [caption, value, radius, angle, side, labelY, part]
+  const L=[['Outer ring OD',OROD,R(OROD),-45,1,80,'outer'],['Gasket OD',GOD,R(GOD),0,1,150,'winding'],['Outer ring ID',orID,R(orID),45,1,220,'outer'],
+          ['Inner ring OD',irOD,R(irOD),-135,-1,80,'inner'],['Inner ring ID',IRID,R(IRID),180,-1,150,'inner'],['Gasket ID',GID,R(GID),135,-1,220,'winding']];
+  L.forEach(([cap,v,rad,ang,sd,ly,p])=>{
+    const a=ang*Math.PI/180,px=200+rad*Math.cos(a),py=150+rad*Math.sin(a),ex=200+sd*113;
+    g+=`<g class="dim" opacity="${op(p)}"><circle cx="${px}" cy="${py}" r="2.4" fill="var(--ink)"/>
+     <polyline points="${px},${py} ${ex},${ly} ${ex+sd*5},${ly}" fill="none" stroke="var(--ink)" stroke-width="1" opacity=".6"/>
+     <text class="cap" x="${ex+sd*9}" y="${ly-3}" text-anchor="${sd>0?'start':'end'}">${cap}</text>
+     <text class="val" x="${ex+sd*9}" y="${ly+13}" text-anchor="${sd>0?'start':'end'}">Ø ${f(v)}</text></g>`;
+  });
+  g+=`<text x="200" y="292" text-anchor="middle" font-size="9" fill="var(--mute)">Schematic – not to scale · dimensions in mm</text>`;
+  $('dwg').innerHTML=g;
+}
+let cur=null;
+function openSheet(k){
+  cur=k;const T={size:'Select size',series:'Select series',rating:'Select rating (class)',part:'Select part'};
+  $('sTitle').textContent=T[k];
+  $('sBody').innerHTML='<div class="opts'+(k==='part'?' two':'')+'">'+opts(k).map(o=>`<button data-v="${o[0]}" class="${S[k]===o[0]?'sel':''}">${o[1]}</button>`).join('')+'</div>';
+  show();
+}
+function show(){$('sheet').classList.add('show');$('veil').classList.add('show')}
+function hide(){$('sheet').classList.remove('show');$('veil').classList.remove('show')}
+document.querySelectorAll('.fb').forEach(b=>b.onclick=()=>openSheet(b.dataset.k));
+$('sBody').onclick=e=>{const b=e.target.closest('button');if(!b)return;S[cur]=b.dataset.v;hide();render()};
+$('veil').onclick=hide;
+document.onkeydown=e=>{if(e.key==='Escape')hide()};
+$('gear').onclick=()=>{
+  cur=null;$('sTitle').textContent='Ring clearance (mm)';
+  $('sBody').innerHTML=`<div class="set"><span>Inner ring OD = Gasket ID +</span><input id="cIr" type="number" step="0.1" value="${C.ir}"></div>
+   <div class="set"><span>Outer ring ID = Gasket OD −</span><input id="cOr" type="number" step="0.1" value="${C.or}"></div>`;
+  $('cIr').oninput=e=>{C.ir=+e.target.value||0;render()};$('cOr').oninput=e=>{C.or=+e.target.value||0;render()};
+  show();
+};
+$('theme').onclick=()=>{const d=sv.dataset.theme==='dark';sv.dataset.theme=d?'light':'dark';$('theme').textContent=d?'☾':'☀'};
+if(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches){sv.dataset.theme='dark';$('theme').textContent='☀'}
+render();
+</script></body></html>
